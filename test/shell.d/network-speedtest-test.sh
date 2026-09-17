@@ -45,3 +45,9 @@ if [[ $output == *"Failed to fetch speed test endpoints"* ]]; then
   fail "speedtest fails when fast.com is unavailable instead of falling back"
 fi
 pass "speedtest falls back to alternative endpoints when Fast.com fails"
+
+grep -F 'filter_speed_urls' "$ROOT/bin/omarchy-network-speedtest" >/dev/null ||
+  fail "speedtest does not constrain endpoint hostnames"
+grep -F -- '--max-filesize 1048576' "$ROOT/bin/omarchy-network-speedtest" >/dev/null ||
+  fail "speedtest does not cap Fast.com response size"
+pass "speedtest constrains endpoint hostnames and response size"
