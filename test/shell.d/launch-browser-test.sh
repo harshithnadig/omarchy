@@ -35,6 +35,10 @@ cat >"$mock_bin/systemd-run" <<'SH'
 #!/bin/bash
 printf '%s\n' "$*" >"$OMARCHY_TEST_BROWSER_LAUNCH"
 SH
+cat >"$mock_bin/setsid" <<'SH'
+#!/bin/bash
+printf '%s\n' "$*" >"$OMARCHY_TEST_WEBAPP_LAUNCH"
+SH
 cat >"$mock_bin/omarchy-hyprland-focus-app" <<'SH'
 #!/bin/bash
 printf '%s\n' "$1" >"$OMARCHY_TEST_BROWSER_FOCUS"
@@ -104,5 +108,34 @@ HOME="$test_home" PATH="$mock_bin:$PATH" HYPRLAND_INSTANCE_SIGNATURE=test \
 
 grep -F '/usr/bin/flatpak run org.mozilla.firefox --private-window https://example.test/flatpak-private' "$launch_log" >/dev/null ||
   fail "browser launcher applies private flag to wrapped browser before the URL"
+
+# A shell metacharacter in a desktop entry must stay an argument, never run.
+pwned_file="$test_tmp/desktop-entry-pwned"
+cat >"$test_home/.local/share/applications/unsafe.desktop" <<EOF
+[Desktop Entry]
+Exec=chromium --profile-directory=Default; touch $pwned_file %u
+EOF
+cat >"$mock_bin/xdg-settings" <<'SH'
+#!/bin/bash
+echo unsafe.desktop
+SH
+chmod +x "$mock_bin/xdg-settings"
+rm -f "$launch_log" "$focus_log" "$pwned_file"
+HOME="$test_home" PATH="$mock_bin:$PATH" HYPRLAND_INSTANCE_SIGNATURE=test \
+  OMARCHY_TEST_BROWSER_LAUNCH="$launch_log" OMARCHY_TEST_BROWSER_FOCUS="$focus_log" \
+  bash "$ROOT/bin/omarchy-launch-browser" "https://example.test/unsafe"
+[[ ! -e $pwned_file ]] || fail "browser launcher evaluates a desktop Exec entry as shell code"
+
+# The webapp launcher uses the same literal parser and must have the same
+# no-eval guarantee.
+cat >"$test_home/.local/share/applications/chromium.desktop" <<EOF
+[Desktop Entry]
+Exec=chromium --profile-directory=Default; touch $pwned_file
+EOF
+rm -f "$pwned_file"
+HOME="$test_home" PATH="$mock_bin:$PATH" \
+  OMARCHY_TEST_WEBAPP_LAUNCH="$launch_log" \
+  bash "$ROOT/bin/omarchy-launch-webapp" "https://example.test/webapp"
+[[ ! -e $pwned_file ]] || fail "webapp launcher evaluates a desktop Exec entry as shell code"
 
 pass "browser launcher follows opened links to the browser workspace and supports wrapped Exec commands"

@@ -16,7 +16,56 @@ if [[ -z $exec_line ]]; then
   exec_line="$browser"
 fi
 
-eval "tokens=($exec_line)"
+# Parse the freedesktop Exec field as literal argv data. Never use eval here:
+# a writable desktop entry must not gain shell execution during launch.
+parse_exec_line() {
+  local input="$1"
+  local token=""
+  local started=0
+  local in_single=0
+  local in_double=0
+  local escaped=0
+  local char
+  local index
+  tokens=()
+
+  for ((index = 0; index < ${#input}; index++)); do
+    char="${input:index:1}"
+    if (( escaped )); then
+      token+="$char"
+      escaped=0
+      started=1
+    elif [[ $char == "\\" && $in_single -eq 0 ]]; then
+      escaped=1
+      started=1
+    elif [[ $char == "'" && $in_double -eq 0 ]]; then
+      in_single=$((1 - in_single))
+      started=1
+    elif [[ $char == '"' && $in_single -eq 0 ]]; then
+      in_double=$((1 - in_double))
+      started=1
+    elif [[ $char == ' ' || $char == $'\t' ]]; then
+      if (( started )); then
+        tokens+=("$token")
+        token=""
+        started=0
+      fi
+    else
+      token+="$char"
+      started=1
+    fi
+  done
+
+  if (( escaped )); then token+='\\'; fi
+  if (( in_single || in_double )); then return 1; fi
+  if (( started )); then tokens+=("$token"); fi
+}
+
+if ! parse_exec_line "$exec_line" || [[ ${#tokens[@]} -eq 0 ]]; then
+  echo "Invalid browser Exec entry; refusing to launch." >&2
+  exit 1
+fi
+
 cmd=()
 for token in "${tokens[@]}"; do
   case "$token" in
