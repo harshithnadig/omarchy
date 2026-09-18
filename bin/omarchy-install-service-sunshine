@@ -11,7 +11,7 @@ PRIVATE_CIDRS=(10.0.0.0/8 172.16.0.0/12 192.168.0.0/16)
 UFW_COMMENT="omarchy-sunshine"
 SUNSHINE_ADMIN_APP="Sunshine Admin"
 SUNSHINE_ADMIN_PORT=47990
-SUNSHINE_ADMIN_URL="https://localhost:47990"
+SUNSHINE_ADMIN_URL="https://localhost:${SUNSHINE_ADMIN_PORT}"
 SUNSHINE_ADMIN_EXEC="omarchy-launch-webapp $SUNSHINE_ADMIN_URL --ignore-certificate-errors"
 SUNSHINE_ICON_SOURCE="/usr/share/sunshine/web/images/logo-sunshine-45.png"
 
