@@ -5,11 +5,12 @@
 
 set -e
 
-TCP_PORTS=(47984 47989 47990 48010)
+TCP_PORTS=(47984 47989 48010)
 UDP_PORTS=(5353 47998 47999 48000 48002 48010)
 PRIVATE_CIDRS=(10.0.0.0/8 172.16.0.0/12 192.168.0.0/16)
 UFW_COMMENT="omarchy-sunshine"
 SUNSHINE_ADMIN_APP="Sunshine Admin"
+SUNSHINE_ADMIN_PORT=47990
 SUNSHINE_ADMIN_URL="https://localhost:47990"
 SUNSHINE_ADMIN_EXEC="omarchy-launch-webapp $SUNSHINE_ADMIN_URL --ignore-certificate-errors"
 SUNSHINE_ICON_SOURCE="/usr/share/sunshine/web/images/logo-sunshine-45.png"
@@ -46,6 +47,10 @@ open_ufw_ports() {
     open_ufw_port_for_tailscale tcp "$port"
   done
 
+  # The admin UI is a control plane, not a streaming port. Keep it off the
+  # private-LAN CIDRs and expose it only through an existing Tailscale link.
+  open_ufw_port_for_tailscale tcp "$SUNSHINE_ADMIN_PORT"
+
   for port in "${UDP_PORTS[@]}"; do
     open_ufw_port_for_private_lans udp "$port"
     open_ufw_port_for_tailscale udp "$port"
@@ -71,4 +76,4 @@ install_admin_webapp
 $SUNSHINE_ADMIN_EXEC >/dev/null 2>&1 &
 
 echo ""
-echo "Sunshine has been installed and its Moonlight streaming ports are open for private LANs and Tailscale."
+echo "Sunshine has been installed. Moonlight streaming ports are open for private LANs and Tailscale; the admin UI is local/Tailscale-only."
