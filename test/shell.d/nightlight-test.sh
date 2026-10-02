@@ -39,7 +39,7 @@ SH
 
 cat >"$TMPDIR/bin/pgrep" <<'SH'
 #!/bin/bash
-exit 0
+exit "${PGREP_EXIT:-0}"
 SH
 
 cat >"$TMPDIR/bin/omarchy-shell" <<'SH'
@@ -101,3 +101,22 @@ printf '6500\n' >"$STATE"
 [[ $(<"$STATE") == 6500 ]] || fail "concurrent nightlight toggle drops while lock is held"
 pass "concurrent nightlight toggle drops while lock is held"
 
+# A cold start launches hyprsunset, which outlives the toggle and must not inherit its lock
+cat >"$TMPDIR/bin/uwsm-app" <<'SH'
+#!/bin/bash
+held=no
+for fd in /proc/$$/fd/*; do
+  [[ $(readlink "$fd") == "$XDG_RUNTIME_DIR/omarchy-toggle-nightlight.lock" ]] && held=yes
+done
+printf '%s\n' "$held" >"$LAUNCH_LOG"
+SH
+chmod +x "$TMPDIR/bin/uwsm-app"
+LAUNCH_LOG="$TMPDIR/launch-log"
+printf '6500\n' >"$STATE"
+PGREP_EXIT=1 LAUNCH_LOG="$LAUNCH_LOG" XDG_RUNTIME_DIR="$TMPDIR/run" nightlight_cli >/dev/null
+for _ in {1..50}; do
+  [[ -s $LAUNCH_LOG ]] && break
+  sleep 0.1
+done
+[[ $(<"$LAUNCH_LOG") == "no" ]] || fail "nightlight toggle does not hand its lock to the hyprsunset it starts"
+pass "nightlight toggle does not hand its lock to the hyprsunset it starts"

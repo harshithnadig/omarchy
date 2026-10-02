@@ -42,7 +42,8 @@ flock -n "$lock_fd" || exit 0
 was_running=true
 if ! pgrep -x hyprsunset >/dev/null; then
   was_running=false
-  setsid uwsm-app -- hyprsunset &
+  # Close the lock for the daemon, or it holds it for life and drops every later toggle
+  setsid uwsm-app -- hyprsunset {lock_fd}>&- &
 fi
 
 # Query the current temperature
