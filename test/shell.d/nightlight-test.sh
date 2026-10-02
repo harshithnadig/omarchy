@@ -49,8 +49,11 @@ SH
 
 chmod +x "$TMPDIR/bin/hyprctl" "$TMPDIR/bin/pgrep" "$TMPDIR/bin/omarchy-shell"
 
+mkdir -p "$TMPDIR/run"
+
 nightlight_cli() {
   PATH="$TMPDIR/bin:$PATH" \
+  XDG_RUNTIME_DIR="$TMPDIR/run" \
   HYPRSUNSET_STATE="$STATE" \
   OMARCHY_SHELL_LOG="$SHELL_LOG" \
     "$ROOT/bin/omarchy-toggle-nightlight" "$@"
@@ -113,7 +116,7 @@ SH
 chmod +x "$TMPDIR/bin/uwsm-app"
 LAUNCH_LOG="$TMPDIR/launch-log"
 printf '6500\n' >"$STATE"
-PGREP_EXIT=1 LAUNCH_LOG="$LAUNCH_LOG" XDG_RUNTIME_DIR="$TMPDIR/run" nightlight_cli >/dev/null
+PGREP_EXIT=1 LAUNCH_LOG="$LAUNCH_LOG" nightlight_cli >/dev/null
 for _ in {1..50}; do
   [[ -s $LAUNCH_LOG ]] && break
   sleep 0.1
